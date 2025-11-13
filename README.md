@@ -1,4 +1,4 @@
-# Dependency: A straightforward DI container for Go applications.
+# Dependency: A straightforward DI container for Go
 
 Dependency is a lightweigt and easy-to-use dependency injection library for Go, featuring named dependencies and type-safe resolution.
 
