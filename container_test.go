@@ -1,6 +1,7 @@
 package dependency_test
 
 import (
+	"errors"
 	"testing"
 
 	"github.com/securehaven/dependency"
@@ -12,11 +13,20 @@ type MyDependency struct {
 }
 
 var MyDependencyName = dependency.Name(new(MyDependency))
+var MyDependencyError = errors.New("something went wrong")
 
 func AddMyDependency() dependency.DependencyFunc {
 	return func() (string, dependency.FactoryFunc) {
 		return MyDependencyName, func(c *dependency.Container) (any, error) {
 			return &MyDependency{}, nil
+		}
+	}
+}
+
+func AddMyDependencyError() dependency.DependencyFunc {
+	return func() (string, dependency.FactoryFunc) {
+		return MyDependencyName, func(c *dependency.Container) (any, error) {
+			return &MyDependency{}, MyDependencyError
 		}
 	}
 }
@@ -51,5 +61,13 @@ func TestContainerResolveMissingDependency_Error(t *testing.T) {
 	container := dependency.NewContainer()
 	_, err := container.Resolve(MyDependencyName)
 
-	assert.ErrorIs(err, dependency.ErrMissingDependency)
+	assert.ErrorIs(err, dependency.ErrFactoryNotFound)
+}
+
+func TestContainerResolveDependencyWithError_Error(t *testing.T) {
+	assert := assert.New(t)
+	container := dependency.NewContainer(AddMyDependencyError())
+	_, err := container.Resolve(MyDependencyName)
+
+	assert.ErrorIs(err, MyDependencyError)
 }

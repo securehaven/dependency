@@ -24,11 +24,7 @@ type Container struct {
 	dependencies map[string]any
 }
 
-var (
-	ErrMissingDependency = errors.New("missing dependency")
-	ErrTypeConversion    = errors.New("failed to convert type")
-	ErrFactoryNotFound   = errors.New("factory not found")
-)
+var ErrFactoryNotFound = errors.New("factory not found")
 
 func NewContainer(deps ...DependencyFunc) *Container {
 	factories := make(map[string]FactoryFunc, len(deps))
@@ -68,19 +64,13 @@ func (c *Container) Resolve(key string) (any, error) {
 	c.mutex.Unlock()
 
 	if !ok {
-		return nil, errors.Join(
-			ErrMissingDependency,
-			fmt.Errorf("%w for %q", ErrFactoryNotFound, key),
-		)
+		return nil, fmt.Errorf("%w for %s", ErrFactoryNotFound, key)
 	}
 
 	dep, err := factory(c)
 
 	if err != nil {
-		return nil, errors.Join(
-			ErrMissingDependency,
-			fmt.Errorf("error from factory: %w", err),
-		)
+		return nil, fmt.Errorf("error from factory for %s: %w", key, err)
 	}
 
 	c.mutex.Lock()
