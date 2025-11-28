@@ -13,7 +13,7 @@ type MyDependency struct {
 }
 
 var MyDependencyName = dependency.Name(new(MyDependency))
-var MyDependencyError = errors.New("something went wrong")
+var ErrMyDependency = errors.New("something went wrong")
 
 func AddMyDependency() dependency.DependencyFunc {
 	return func() (string, dependency.FactoryFunc) {
@@ -26,7 +26,7 @@ func AddMyDependency() dependency.DependencyFunc {
 func AddMyDependencyError() dependency.DependencyFunc {
 	return func() (string, dependency.FactoryFunc) {
 		return MyDependencyName, func(c *dependency.Container) (any, error) {
-			return &MyDependency{}, MyDependencyError
+			return &MyDependency{}, ErrMyDependency
 		}
 	}
 }
@@ -69,5 +69,5 @@ func TestContainerResolveDependencyWithError_Error(t *testing.T) {
 	container := dependency.NewContainer(AddMyDependencyError())
 	_, err := container.Resolve(MyDependencyName)
 
-	assert.ErrorIs(err, MyDependencyError)
+	assert.ErrorIs(err, ErrMyDependency)
 }
