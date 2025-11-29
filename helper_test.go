@@ -7,6 +7,13 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+func TestHelperName_Success(t *testing.T) {
+	expected := "*dependency_test.MyDependency"
+	received := dependency.Name(new(MyDependency))
+
+	assert.Equal(t, expected, received)
+}
+
 func TestHelperStart_Success(t *testing.T) {
 	assert := assert.New(t)
 	container := dependency.NewContainer(AddMyDependency())

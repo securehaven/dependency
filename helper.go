@@ -1,6 +1,14 @@
 package dependency
 
-import "fmt"
+import (
+	"fmt"
+	"reflect"
+)
+
+// Get the type name of a dependency.
+func Name(dep any) string {
+	return reflect.TypeOf(dep).String()
+}
 
 // Force a dependency without an error.
 // Panics on error.
