@@ -7,6 +7,10 @@ import (
 
 var ErrTypeConversion = errors.New("failed to convert type")
 
+// Resolves a dependency using a resolver.
+// Panics on error.
+//
+// Deprecated: Use Must(ResolveWithResolver()) instead.
 func MustResolveWithResolver[Dependency any](r Resolver) Dependency {
 	dep, err := ResolveWithResolver[Dependency](r)
 
@@ -17,6 +21,7 @@ func MustResolveWithResolver[Dependency any](r Resolver) Dependency {
 	return dep
 }
 
+// Resolves a dependency using a resolver.
 func ResolveWithResolver[Dependency any](r Resolver) (Dependency, error) {
 	var dep Dependency
 
