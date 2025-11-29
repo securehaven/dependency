@@ -1,88 +1,159 @@
-# Dependency: A straightforward DI container for Go
+# 🚀 Dependency: A Lightweight DI Container for Go
 
-Dependency is a lightweigt and easy-to-use dependency injection library for Go, featuring named dependencies and type-safe resolution.
+**Dependency** is a straightforward, lightweight, and easy-to-use **Dependency Injection (DI) container** for Go, designed for speed and **type-safe resolution** using Go Generics.
 
-## Getting started
+-----
+
+## 📦 Getting Started
+
+Install the library using the standard Go toolchain:
 
 ```sh
 go get -u github.com/securehaven/dependency
 ```
 
-## Examples
+-----
+
+## ✨ Core Concepts & Registration
+
+Dependencies are registered using a unique **name** and a **FactoryFunc** that defines how to create the instance.
+
+The helper `dependency.Name(T)` is crucial as it generates a string name from the *type*, enabling the type-safe generic resolution later.
+
+### 📝 Example: Defining and Registering a Dependency
 
 ```go
+package main
+
 import (
+	"log"
 	"github.com/securehaven/dependency"
 )
 
-type MyDependency struct{}
+// Define your dependency struct
+type MyDependency struct{
+    Value string
+}
 
-// The name is used to resolve the dependency later.
-// Using the dependency.Name() helper allows us to resolve
-// a dependency via a generic type e.g. dependency.Resolve[*MyDependency]().
+// 1. Generate a unique name for the dependency based on its type (*MyDependency).
 var MyDependencyName = dependency.Name(new(MyDependency))
 
-func AddMyDependency() dependency.DependencyFunc {
-	return func() (string, dependency.FactoryFunc) {
-		return MyDependencyName, func(c *dependency.Container) (any, error) {
-			return &MyDependency{}, nil
-		}
+// 2. Define a DependencyFunc (a factory wrapper)
+var MyDependency dependency.DependencyFunc = func() (string, dependency.FactoryFunc) {
+    // Returns the unique name and the factory function
+	return MyDependencyName, func(c *dependency.Container) (any, error) {
+		// The factory creates and returns the concrete instance
+        log.Println("MyDependency instance created.")
+		return &MyDependency{Value: "Injected"}, nil
 	}
 }
+
+func main() {
+    // 3. Register the dependency with the standard container
+    dependency.Register(
+        MyDependency,
+    )
+
+    // ... resolution examples below
+}
 ```
 
-### Using the standard container
+-----
+
+## 🛠️ Resolving Dependencies
+
+**Dependency** excels at type-safe resolution using generics, eliminating the need for boilerplate type assertion.
+
+### 1. Type-Safe Generic Resolution (Recommended)
+
+This is the cleanest way to resolve dependencies and relies on the type being used to generate the unique name during registration.
+
+| Method | Description |
+| :--- | :--- |
+| `dependency.Resolve[T]()` | Resolves from the **standard container**. Returns `(T, error)`. |
+| `dependency.MustResolve[T]()` | Resolves from the **standard container**. Returns `T` or **panics** on error. |
+| `dependency.ResolveWithResolver[T](container)` | Resolves from a **custom container**. Returns `(T, error)`. |
+| `dependency.MustResolveWithResolver[T](container)` | Resolves from a **custom container**. Returns `T` or **panics**. |
 
 ```go
-// Register a single or multiple dependencies.
-dependency.Register(
-	AddMyDependency(),
-)
-
-// Resolve a dependency by accessing the standard container directly.
-myDependency, err := dependency.StdContainer.Resolve(MyDependencyName)
-	
-// An error is returned when the dependency cannot be resolved.
-// This is the case when either the dependency nor the factory can be found by name.
-// Usually this happens when the dependency is not registered or
-// the dependency name is not equal to the returned name from the DependencyFunc.
-if err != nil {
-	log.Fatal(err)
-}
-
-// Resolving a dependency via a generic type.
+// Resolving from the standard container
 myDependency, err := dependency.Resolve[*MyDependency]()
-
-// Panics instead of returning the error.
-myDependency := dependency.MustResolve[*MyDependency]()
-```
-
-### Using a custom container
-
-```go
-// Create a new container instance.
-container := dependency.NewContainer(
-	AddMyDependency(),
-)
-
-// Register additional dependencies.
-container.Register(
-	AddMyDependency(),
-)
-
-myDependency, err := container.Resolve(MyDependencyName)
-
-// An error is returned when the dependency cannot be resolved.
-// This is the case when either the dependency nor the factory can be found by name.
-// Usually this happens when the dependency is not registered or
-// the dependency name is not equal to the returned name from the DependencyFunc.
 if err != nil {
-	log.Fatal(err)
+	log.Fatal("Failed to resolve MyDependency:", err)
 }
 
-// Resolving a dependency via a generic type using a custom container as resolver.
-myDependeny, err := dependency.ResolveWithResolver[*MyDependency](container)
+log.Println("Resolved value:", myDependency.Value) // Output: Injected
 
-// Panics instead of returning the error.
-myDependeny := dependency.MustResolveWithResolver[*MyDependency](container)
+// Panics if not found
+myDependency = dependency.MustResolve[*MyDependency]()
+```
+
+### 2. Resolution by Name
+
+You can also resolve directly using the dependency name, which requires a type assertion.
+
+```go
+// Resolve by name (less type-safe, requires assertion)
+rawDep, err := dependency.StdContainer.Resolve(MyDependencyName)
+if err != nil {
+    log.Fatal(err)
+}
+
+myDependency, ok := rawDep.(*MyDependency)
+if !ok {
+    log.Fatal("Type assertion failed")
+}
+```
+
+-----
+
+## 🔗 Chained Resolution
+
+For resolving multiple dependencies sequentially, the `Start()` and `Then()` helpers streamline the process by automatically chaining error handling.
+
+This pattern is especially useful in initialization code where multiple dependencies must be resolved one after the other.
+
+```go
+// Assume AddFirstDependency, AddSecondDependency, etc., are registered.
+
+// 1. Start the chain by resolving the first instance.
+firstDependency := dependency.Start[*FirstDependency](dependency.StdContainer)
+
+// 2. Chain subsequent resolutions. The previous result (firstDependency)
+// is passed as an argument. The error is wrapped and propagated.
+secondDependency := dependency.Then[*SecondDependency](dependency.StdContainer, firstDependency)
+thirdDependency := dependency.Then[*ThirdDependency](dependency.StdContainer, secondDependency)
+
+// 3. Only the last error needs to be checked, as it contains the full error chain.
+if thirdDependency.Err != nil {
+	log.Fatal("Chained resolution failed:", thirdDependency.Err)
+}
+
+// Access the resolved instances
+app := NewApp(
+	firstDependency.Value,
+	secondDependency.Value,
+	thirdDependency.Value,
+)
+```
+
+-----
+
+## 🧺 Using a Custom Container
+
+While the `dependency.StdContainer` is convenient, you can create and manage isolated container instances.
+
+```go
+// 1. Create a new container instance and register initial dependencies.
+container := dependency.NewContainer(
+	MyDependency,
+)
+
+// 2. Register additional dependencies later.
+container.Register(
+	AnotherDependency,
+)
+
+// 3. Resolve using the custom container via the specialized generic helpers
+myDependency, err := dependency.ResolveWithResolver[*MyDependency](container)
 ```
